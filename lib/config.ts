@@ -4,6 +4,8 @@ export const config = {
   topUpAmountsCents: [1000, 2000, 3000, 5000, 10000],
   paymentMethods: ["nets", "credit"] as const,
   maxBalanceCents: 50000,
+  autoRegisterCards: true, // for testing: any new card is added on its first tap
+  newCardBalanceCents: 500, // starting balance for those cards
   cardExpiry: "31 Jul 2029", // shown for every practice card
   screenTimeoutMs: 60000, // idle time before returning to the start screen
   resultScreenMs: 8000, // how long the success or error screen stays up

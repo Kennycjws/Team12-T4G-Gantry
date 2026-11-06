@@ -10,7 +10,9 @@ The flow follows `TopUp_UI_State_Machine.pptx`.
     npm run dev          # kiosk at http://127.0.0.1:3000, teacher page at /admin
     npm run bridge       # second terminal, for the Arduino reader
 
-For a lesson, use `npm run build` then `npm start`. This hides the dev panel.
+For a lesson, run `npm run kiosk`. It starts the app and the bridge, restarts them if
+they crash, and opens the kiosk in the browser. The reader can be plugged in at any time.
+After changing the code, run `npm run build` once so the kiosk picks it up.
 
 No reader yet? In `npm run dev`, use the panel at the bottom right to fake taps.
 
