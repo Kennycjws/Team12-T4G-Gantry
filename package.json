@@ -24,6 +24,6 @@
     "typescript": "^5"
   },
   "optionalDependencies": {
-    "nfc-pcsc": "^0.8.1"
+    "serialport": "^13.0.0"
   }
 }

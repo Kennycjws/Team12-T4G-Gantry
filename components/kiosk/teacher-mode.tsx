@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { Lock, X, PencilLine } from "lucide-react"
 import { config, formatMoney } from "@/lib/config"
 
-const TEACHER_PASSWORD = "1234"
+const TEACHER_PASSWORD = "123456"
 
 export function TeacherModeModal({
   currentValue,
