@@ -3,7 +3,7 @@
 export const config = {
   topUpAmountsCents: [1000, 2000, 3000, 5000, 10000],
   paymentMethods: ["nets", "credit"] as const,
-  maxBalanceCents: 50000, // placeholder: confirm the real limit
+  maxBalanceCents: 50000,
   cardExpiry: "31 Jul 2029", // shown for every practice card
   screenTimeoutMs: 60000, // idle time before returning to the start screen
   resultScreenMs: 8000, // how long the success or error screen stays up
