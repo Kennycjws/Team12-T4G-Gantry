@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start -H 127.0.0.1",
     "bridge": "node bridge/reader.mjs",
+    "kiosk": "node scripts/kiosk.mjs",
     "test": "node --test lib/*.test.ts"
   },
   "dependencies": {

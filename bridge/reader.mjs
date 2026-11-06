@@ -6,7 +6,8 @@ import { SerialPort, ReadlineParser } from "serialport";
 const APP_URL = process.env.APP_URL ?? "http://127.0.0.1:3000";
 const BAUD_RATE = 115200; // must match the firmware
 const RETRY_MS = 2000;
-const USB_SERIAL_VENDORS = ["2341", "2a03", "1a86", "0403"]; // Arduino (x2), CH340, FTDI
+// Arduino (x2), CH340, FTDI, CP210x, Espressif. Covers Uno and ESP32 boards.
+const USB_SERIAL_VENDORS = ["2341", "2a03", "1a86", "0403", "10c4", "303a"];
 
 async function post(body) {
   try {
@@ -23,14 +24,27 @@ async function findPort() {
   return ports.find((port) => USB_SERIAL_VENDORS.includes(port.vendorId?.toLowerCase()))?.path;
 }
 
+function parseJson(line) {
+  try {
+    return JSON.parse(line);
+  } catch {
+    return null; // boot noise, or a line from firmware/pn532_reader
+  }
+}
+
+// Handles two firmwares. Both report a card arriving and leaving:
+// - our board sends {"t":"tap","uid":"0423C292"} and {"t":"removed"}
+// - firmware/pn532_reader sends "present 0423C292" and "removed"
 function onLine(rawLine) {
   const line = rawLine.trim();
-  const present = line.match(/^present ([0-9A-F]+)$/);
+  const message = parseJson(line);
+  const uid = message?.t === "tap" ? message.uid : line.match(/^present ([0-9A-F]+)$/)?.[1];
 
-  if (present) {
-    console.log(`Card present: ${present[1]}`);
-    post({ type: "present", uid: present[1] });
-  } else if (line === "removed") {
+  if (/^[0-9A-Fa-f]+$/.test(uid)) {
+    console.log(`Card present: ${uid}`);
+    post({ type: "present", uid });
+  } else if (message?.t === "removed" || line === "removed") {
+    console.log("Card removed");
     post({ type: "removed" });
   } else if (line) {
     console.log(`Arduino: ${line}`);

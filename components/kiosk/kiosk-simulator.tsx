@@ -21,6 +21,32 @@ async function requestCard(url: string, init?: RequestInit): Promise<Card> {
   return body
 }
 
+// The screens were designed at this size, and the kiosk is scaled up to fill the window.
+const DESIGN_WIDTH = 960
+const DESIGN_HEIGHT = 540
+
+function useFitToWindow() {
+  const [viewport, setViewport] = useState<{ width: number; height: number } | null>(null)
+
+  useEffect(() => {
+    const measure = () => setViewport({ width: window.innerWidth, height: window.innerHeight })
+    measure()
+    window.addEventListener("resize", measure)
+    return () => window.removeEventListener("resize", measure)
+  }, [])
+
+  if (!viewport) return { width: "100%", height: "100%" }
+
+  // The layout grows along the spare axis, so any window shape is filled with no bars.
+  const scale = Math.min(viewport.width / DESIGN_WIDTH, viewport.height / DESIGN_HEIGHT)
+  return {
+    width: viewport.width / scale,
+    height: viewport.height / scale,
+    transform: `scale(${scale})`,
+    transformOrigin: "top left",
+  }
+}
+
 function timeoutFor(state: State) {
   if (state.screen === "idle" || state.screen === "processing") return null
   if (state.screen === "done" || state.screen === "error") return config.resultScreenMs
@@ -30,6 +56,7 @@ function timeoutFor(state: State) {
 export function KioskSimulator() {
   const [state, dispatch] = useReducer(reducer, initialState)
   const [teacherOpen, setTeacherOpen] = useState(false)
+  const fitToWindow = useFitToWindow()
 
   useCardReader(
     useCallback((event: ReaderEvent) => {
@@ -118,13 +145,9 @@ export function KioskSimulator() {
   }
 
   return (
-    <main className="flex min-h-svh flex-col items-center justify-center gap-4 bg-neutral-900 p-4">
-      {/* Device frame: 960x540 with dark teal bezel */}
-      <div
-        className="relative overflow-hidden rounded-[28px] border-[12px] border-bezel bg-bezel shadow-2xl"
-        style={{ width: 960, height: 540, maxWidth: "95vw", maxHeight: "80vh" }}
-      >
-        <div className="h-full w-full overflow-hidden rounded-[16px]">{renderScreen()}</div>
+    <main className="fixed inset-0 overflow-hidden bg-bezel">
+      <div className="relative overflow-hidden" style={fitToWindow}>
+        {renderScreen()}
         {teacherOpen && state.screen === "select" && (
           <TeacherModeModal
             currentValue={state.card.balanceCents}
