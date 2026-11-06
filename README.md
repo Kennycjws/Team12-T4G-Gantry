@@ -1,36 +1,40 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Grace Orchard MRT Top-Up Simulator
 
-## Getting Started
+A local practice version of an MRT top-up machine, using an ACR122U reader and fake
+practice cards. No real money moves: balances are simulated in `data/db.json`.
+The flow follows `TopUp_UI_State_Machine.pptx`.
 
-First, run the development server:
+## Run
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+    npm install
+    npm run dev          # kiosk at http://127.0.0.1:3000, teacher page at /admin
+    npm run bridge       # second terminal, NFC readers only
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+For a lesson, use `npm run build` then `npm start`. This hides the dev panel.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+No reader yet? In `npm run dev`, use the panel at the bottom right to fake taps.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## How it fits together
 
-## Learn More
+    Card reader -> bridge/reader.mjs -> POST /api/reader/tap
+                                              |
+    Browser <- GET /api/reader/events (live) <-+
+       |
+    lib/machine.ts      top-up flow, one state per screen
+    components/kiosk/kiosk-simulator.tsx  connects the flow to screens and the API
+    components/kiosk/*    the v0 screens
+    lib/store.ts        cards and transactions in data/db.json
+    lib/config.ts       amounts, payment methods, limits, timeouts
 
-To learn more about Next.js, take a look at the following resources:
+## Screens
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The screens in `components/kiosk/` came from the v0 project `transit-card-kiosk`. They
+only take props and hold no flow logic. To change a design, edit the screen directly.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Teacher Mode on the select screen changes the balance of the card on the reader
+(password in `components/kiosk/teacher-mode.tsx`). Use `/admin` to register cards.
 
-## Deploy on Vercel
+## Before the lesson
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Confirm the card limit in `lib/config.ts`. It is a placeholder.
+- `data/` is not in git. Label cards "Card 1" rather than with student names.
