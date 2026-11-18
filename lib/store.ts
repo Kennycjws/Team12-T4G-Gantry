@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { config, type PaymentMethod } from "./config";
+import type { PaymentMethod } from "./config";
 import type { Card } from "./machine";
 
 // A JSON file instead of a database: one kiosk, a few cards, and nothing native to
@@ -17,10 +17,16 @@ export type Transaction = {
 
 type Db = { cards: Card[]; transactions: Transaction[] };
 
-const dbPath = path.join(process.cwd(), "data", "db.json");
+// The Windows app keeps cards in the teacher's own app data folder (KIOSK_DATA_DIR),
+// because its program files are replaced each time it starts.
+const dataDir = process.env.KIOSK_DATA_DIR ?? path.join(process.cwd(), "data");
+const dbPath = path.join(dataDir, "db.json");
 
 const seed: Db = {
-  cards: [{ uid: "DE0000000001", name: "Demo Card", balanceCents: 320 }],
+  cards: [
+    { uid: "DE0000000001", name: "Demo Card", balanceCents: 320, kind: "ezlink" },
+    { uid: "BA0000000001", name: "Demo Bank Card", balanceCents: 0, kind: "bank" },
+  ],
   transactions: [],
 };
 
@@ -35,8 +41,6 @@ function save(db: Db) {
   fs.writeFileSync(tmp, JSON.stringify(db, null, 2));
   fs.renameSync(tmp, dbPath);
 }
-
-export class TopUpError extends Error {}
 
 export const listCards = () => load().cards;
 export const listTransactions = () => load().transactions;
@@ -57,27 +61,11 @@ export function deleteCard(uid: string) {
   save(db);
 }
 
-// Safe to repeat: the same attemptId applies once, so a retried request can't charge twice.
-export function topUp(attemptId: string, uid: string, amountCents: number, method: PaymentMethod) {
+// The top-up route checks this first, so a retried attemptId can't charge twice.
+export const findTransaction = (id: string) => load().transactions.find((t) => t.id === id);
+
+export function recordTransaction(transaction: Transaction) {
   const db = load();
-  const card = db.cards.find((c) => c.uid === uid);
-  if (!card) throw new TopUpError("Card not recognised");
-  if (db.transactions.some((t) => t.id === attemptId)) return card;
-
-  const balanceAfterCents = card.balanceCents + amountCents;
-  if (balanceAfterCents > config.maxBalanceCents) {
-    throw new TopUpError("This top-up would go over the card limit");
-  }
-
-  card.balanceCents = balanceAfterCents;
-  db.transactions.push({
-    id: attemptId,
-    uid,
-    amountCents,
-    method,
-    balanceAfterCents,
-    at: new Date().toISOString(),
-  });
+  db.transactions.push(transaction);
   save(db);
-  return card;
 }

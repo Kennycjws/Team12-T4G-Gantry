@@ -42,3 +42,10 @@ next-env.d.ts
 
 # local card data
 /data/
+
+# Windows app build output (made by `npm run desktop`)
+/desktop/node_modules/
+/desktop/dist/
+/desktop/server/
+/desktop/bridge/
+/desktop/default-db.json

@@ -1,10 +1,12 @@
 "use client"
 
 import { useCallback, useEffect, useReducer, useState } from "react"
+import { useRouter } from "next/navigation"
+import { Settings } from "lucide-react"
 import { DevPanel } from "@/components/dev-panel"
 import { useCardReader } from "@/hooks/use-card-reader"
 import { config } from "@/lib/config"
-import { initialState, reducer, type Card, type State } from "@/lib/machine"
+import { initialState, reducer, type Card, type Event, type State } from "@/lib/machine"
 import type { ReaderEvent } from "@/lib/reader-bus"
 import { ScreenCash } from "./screen-cash"
 import { ScreenCompletion } from "./screen-completion"
@@ -12,7 +14,7 @@ import { ScreenPay } from "./screen-pay"
 import { ScreenPlacement } from "./screen-placement"
 import { ScreenProcessing } from "./screen-processing"
 import { ScreenSelect } from "./screen-select"
-import { TeacherModeModal } from "./teacher-mode"
+import { TeacherModeModal, TeacherUnlockModal } from "./teacher-mode"
 
 async function requestCard(url: string, init?: RequestInit): Promise<Card> {
   const response = await fetch(url, init)
@@ -56,19 +58,32 @@ function timeoutFor(state: State) {
 export function KioskSimulator() {
   const [state, dispatch] = useReducer(reducer, initialState)
   const [teacherOpen, setTeacherOpen] = useState(false)
+  const [manageCardsOpen, setManageCardsOpen] = useState(false)
+  const router = useRouter()
   const fitToWindow = useFitToWindow()
 
   useCardReader(
     useCallback((event: ReaderEvent) => {
-      if (event.type === "present") dispatch({ type: "CARD_PRESENTED", uid: event.uid })
-      else dispatch({ type: "CARD_REMOVED" })
+      if (event.reader === "bank") {
+        // A registered bank card pays; anything else shows "Invalid card".
+        // Both only act on the payment screen (the reducer ignores them elsewhere).
+        if (event.type === "present") {
+          requestCard(`/api/cards/${event.uid}?reader=bank`)
+            .then(() => dispatch({ type: "CONFIRM_PAYMENT", attemptId: crypto.randomUUID() }))
+            .catch((error) => dispatch({ type: "PAYMENT_CARD_REJECTED", message: error.message }))
+        }
+      } else if (event.type === "present") {
+        dispatch({ type: "CARD_PRESENTED", uid: event.uid })
+      } else {
+        dispatch({ type: "CARD_REMOVED" })
+      }
     }, []),
   )
 
   const uid = state.screen === "reading" ? state.uid : null
   useEffect(() => {
     if (!uid) return
-    requestCard(`/api/cards/${uid}`)
+    requestCard(`/api/cards/${uid}?reader=ezlink`)
       .then((card) => dispatch({ type: "CARD_LOADED", card }))
       .catch((error) => dispatch({ type: "CARD_FAILED", message: error.message }))
   }, [uid])
@@ -77,12 +92,16 @@ export function KioskSimulator() {
   useEffect(() => {
     if (!attempt) return
     const { attemptId, card, amountCents, method } = attempt
-    requestCard("/api/topups", {
+    const result: Promise<Event> = requestCard("/api/topups", {
       method: "POST",
       body: JSON.stringify({ attemptId, uid: card.uid, amountCents, method }),
-    })
-      .then((updated) => dispatch({ type: "TOPUP_OK", card: updated }))
-      .catch((error) => dispatch({ type: "TOPUP_FAILED", message: error.message }))
+    }).then(
+      (updated) => ({ type: "TOPUP_OK", card: updated }),
+      (error) => ({ type: "TOPUP_FAILED", message: error.message }),
+    )
+    // Saving is instant, so wait as long as a real payment would before showing the result.
+    const minimumWait = new Promise((resolve) => setTimeout(resolve, config.processingMs))
+    Promise.all([result, minimumWait]).then(([event]) => dispatch(event))
   }, [attempt?.attemptId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const timeout = timeoutFor(state)
@@ -97,10 +116,11 @@ export function KioskSimulator() {
     new Audio("/sounds/success.mp3").play().catch(() => {})
   }, [state.screen])
 
+  // Writes to the card itself when balances live on cards. Errors show in Teacher Mode.
   async function saveBalance(card: Card, balanceCents: number) {
-    const updated = await requestCard("/api/cards", {
+    const updated = await requestCard(`/api/cards/${card.uid}/balance`, {
       method: "POST",
-      body: JSON.stringify({ ...card, balanceCents }),
+      body: JSON.stringify({ balanceCents }),
     })
     dispatch({ type: "CARD_EDITED", card: updated })
     setTeacherOpen(false)
@@ -132,6 +152,7 @@ export function KioskSimulator() {
           <ScreenPay
             method={state.method}
             amount={state.amountCents}
+            notice={state.notice}
             onAdvance={() => dispatch({ type: "CONFIRM_PAYMENT", attemptId: crypto.randomUUID() })}
           />
         )
@@ -148,11 +169,29 @@ export function KioskSimulator() {
     <main className="fixed inset-0 overflow-hidden bg-bezel">
       <div className="relative overflow-hidden" style={fitToWindow}>
         {renderScreen()}
+        {state.screen === "idle" && (
+          <button
+            type="button"
+            onClick={() => setManageCardsOpen(true)}
+            className="absolute right-3 top-3 flex items-center gap-1.5 rounded-full bg-black/40 px-3 py-1.5 text-xs font-medium text-white/80 backdrop-blur-sm transition-colors hover:bg-black/60 hover:text-white"
+          >
+            <Settings size={14} />
+            Manage cards
+          </button>
+        )}
+        {manageCardsOpen && state.screen === "idle" && (
+          <TeacherUnlockModal
+            title="Manage cards"
+            onClose={() => setManageCardsOpen(false)}
+            onUnlock={() => router.push("/admin")}
+          />
+        )}
         {teacherOpen && state.screen === "select" && (
           <TeacherModeModal
             currentValue={state.card.balanceCents}
             onClose={() => setTeacherOpen(false)}
             onSave={(balanceCents) => saveBalance(state.card, balanceCents)}
+            onManageCards={() => router.push("/admin")}
           />
         )}
       </div>

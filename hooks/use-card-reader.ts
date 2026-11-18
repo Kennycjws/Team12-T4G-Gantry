@@ -35,7 +35,7 @@ export function useCardReader(onEvent: (event: ReaderEvent) => void) {
 
       if (e.key === "Enter") {
         if (buffer.length >= WEDGE_MIN_LENGTH) {
-          handler.current({ type: "present", uid: buffer.toUpperCase() });
+          handler.current({ type: "present", uid: buffer.toUpperCase(), reader: "ezlink" });
         }
         buffer = "";
       } else if (/^[0-9a-fA-F]$/.test(e.key)) {
