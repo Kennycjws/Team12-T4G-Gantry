@@ -12,6 +12,9 @@ export function DevPanel() {
       <button onClick={() => tap({ type: "present", uid: "DE0000000001" })}>Tap demo card</button>
       <button onClick={() => tap({ type: "present", uid: "FFFFFFFF" })}>Tap unknown card</button>
       <button onClick={() => tap({ type: "removed" })}>Remove card</button>
+      <button onClick={() => tap({ type: "present", uid: "BA0000000001", reader: "bank" })}>
+        Tap bank card
+      </button>
     </div>
   );
 }

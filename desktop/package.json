@@ -1,0 +1,51 @@
+{
+  "name": "grace-orchard-topup-desktop",
+  "productName": "Grace Orchard Top-Up",
+  "version": "1.0.0",
+  "description": "MRT top-up simulator for Grace Orchard School",
+  "author": "Grace Orchard Top-Up team",
+  "private": true,
+  "main": "main.cjs",
+  "dependencies": {
+    "serialport": "13.0.0"
+  },
+  "devDependencies": {
+    "electron": "45.2.0",
+    "electron-builder": "26.18.1"
+  },
+  "build": {
+    "appId": "sg.edu.graceorchard.topup",
+    "productName": "Grace Orchard Top-Up",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "default-db.json",
+      "bridge/**",
+      "node_modules/**"
+    ],
+    "asar": false,
+    "npmRebuild": false,
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "portable": {
+      "artifactName": "Grace Orchard Top-Up.exe"
+    },
+    "mac": {
+      "target": [
+        "dir"
+      ]
+    },
+    "afterPack": "./after-pack.cjs"
+  }
+}

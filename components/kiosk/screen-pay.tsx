@@ -11,10 +11,12 @@ function NetsMark() {
 export function ScreenPay({
   method,
   amount,
+  notice,
   onAdvance,
 }: {
   method: PaymentMethod
   amount: number
+  notice?: string
   onAdvance: () => void
 }) {
   return (
@@ -33,6 +35,11 @@ export function ScreenPay({
         <h1 className="text-lg font-semibold text-bezel">
           Pay {formatMoney(amount)} by {paymentLabels[method]}
         </h1>
+        {notice && (
+          <p role="alert" className="mt-1 text-base font-semibold text-red-600">
+            {notice}. Please tap a bank card.
+          </p>
+        )}
 
         <div className="relative mt-2 flex flex-1 items-center justify-center">
           {/* Terminal photo (includes payment-method strip) */}
